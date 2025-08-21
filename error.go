@@ -33,7 +33,7 @@ func (e *callerError) Unwrap() error {
 // Example:
 //
 //	err := errors.New("something went wrong")
-//	err = Inject(err)
+//	err = error.Inject(err)
 //	fmt.Println(err) // might print: "main.go:42: something went wrong"
 func Inject(err error) error {
 	if err == nil {
@@ -42,7 +42,7 @@ func Inject(err error) error {
 
 	_, file, line, ok := runtime.Caller(1)
 	if !ok {
-		file, line = "???", 0
+		return err
 	}
 
 	return &callerError{
@@ -60,7 +60,7 @@ func Inject(err error) error {
 //
 //	err := errors.New("something went wrong")
 //	injectedErr := Inject(err)
-//	file, line, original := Extract(injectedErr)
+//	file, line, original := error.Extract(injectedErr)
 //	fmt.Println(file, line, original) // might print: "main.go 42 something went wrong"
 func Extract(err error) (string, int, error) {
 	var ce *callerError
