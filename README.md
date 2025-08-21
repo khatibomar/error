@@ -20,4 +20,4 @@ Extract the file:line from an error:
 - Only a single prefix is added.
 
 Experimental & unidiomatic I prefer to wrap errors with clear messages to easily locate them.
-But if you like it for some reason, copy the 2 small methods, no need to pull it as a library for such simple thing :)
+But if you like it for some reason, copy this small source code, no need to pull it as a library for such simple thing :)
