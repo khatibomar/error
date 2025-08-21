@@ -8,55 +8,6 @@ import (
 	"testing"
 )
 
-func TestExtract(t *testing.T) {
-	tests := []struct {
-		name     string
-		err      error
-		wantFile string
-		wantLine string
-	}{
-		{
-			name:     "nil error",
-			err:      nil,
-			wantFile: "",
-			wantLine: "",
-		},
-		{
-			name:     "error without colon",
-			err:      errors.New("some error"),
-			wantFile: "",
-			wantLine: "",
-		},
-		{
-			name:     "error with single colon",
-			err:      errors.New("example.go: some error"),
-			wantFile: "",
-			wantLine: "",
-		},
-		{
-			name:     "error with file:line prefix",
-			err:      errors.New("example.go:123: something went wrong"),
-			wantFile: "example.go",
-			wantLine: "123",
-		},
-		{
-			name:     "error with extra colons in message",
-			err:      errors.New("example.go:45: another: error"),
-			wantFile: "example.go",
-			wantLine: "45",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotFile, gotLine := Extract(tt.err)
-			if gotFile != tt.wantFile || gotLine != tt.wantLine {
-				t.Errorf("Extract() = (%q, %q), want (%q, %q)", gotFile, gotLine, tt.wantFile, tt.wantLine)
-			}
-		})
-	}
-}
-
 func TestInject(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -111,6 +62,70 @@ func TestInject(t *testing.T) {
 			file := parts[0]
 			if filepath.Base(file) != file {
 				t.Errorf("expected file to be basename, got %q", file)
+			}
+		})
+	}
+}
+
+func TestExtract(t *testing.T) {
+	type testCase struct {
+		name    string
+		errFunc func() error
+		wantErr string
+	}
+
+	tests := []testCase{
+		{
+			name: "nil error",
+			errFunc: func() error {
+				return nil
+			},
+			wantErr: "",
+		},
+		{
+			name: "plain error without Inject",
+			errFunc: func() error {
+				return errors.New("some error")
+			},
+			wantErr: "some error",
+		},
+		{
+			name: "injected error",
+			errFunc: func() error {
+				return Inject(errors.New("something went wrong"))
+			},
+			wantErr: "something went wrong",
+		},
+		{
+			name: "injected error with colons in message",
+			errFunc: func() error {
+				return Inject(errors.New("another: error"))
+			},
+			wantErr: "another: error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.errFunc()
+			gotFile, gotLine, gotErr := Extract(err)
+
+			gotErrStr := ""
+			if gotErr != nil {
+				gotErrStr = gotErr.Error()
+			}
+
+			if tt.name == "plain error without Inject" || err == nil {
+				if gotFile != "" || gotLine != 0 || gotErrStr != tt.wantErr {
+					t.Errorf("Extract() = (%q, %d, %q), want (%q, %d, %q)",
+						gotFile, gotLine, gotErrStr,
+						"", 0, tt.wantErr)
+				}
+			} else {
+				if !strings.HasSuffix(gotFile, "error_test.go") || gotLine <= 0 || gotErrStr != tt.wantErr {
+					t.Errorf("Extract() = (%q, %d, %q), want (error_test.go, >0, %q)",
+						gotFile, gotLine, gotErrStr, tt.wantErr)
+				}
 			}
 		})
 	}
